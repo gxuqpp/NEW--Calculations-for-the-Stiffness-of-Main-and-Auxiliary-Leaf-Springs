@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>钢板弹簧主、副簧刚度设计计算</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:        #0a0a0a;
+    --surface:   #1a1a1a;
+    --surface2:  #242424;
+    --surface3:  #2e2e2e;
+    --border:    #404040;
+    --border2:   #505050;
+    --text:      #f5f5f5;
+    --text2:     #d0d0d0;
+    --text3:     #a0a0a0;
+    --accent:    #4caf7d;
+    --accent-bg: #1a3328;
+    --accent2:   #5b9bd5;
+    --accent2-bg:#152033;
+    --yellow:    #f0c040;
+    --orange:    #e8873a;
+    --red:       #e05555;
+    --mono: 'Courier New', Courier, monospace;
+    --sans: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    font-family: var(--sans); 
+    background: var(--bg); 
+    color: var(--text); 
+    min-height: 100vh; 
+    font-size: 20px; 
+    line-height: 1.7; 
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .page-header { 
+    background: #000; 
+    border-bottom: 3px solid var(--accent); 
+    padding: 1.8rem 1.5rem; 
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .page-header h1 { 
+    font-size: 26px; 
+    font-weight: 700; 
+    color: var(--text); 
+    letter-spacing: .02em; 
+    line-height: 1.4;
+  }
+  .page-header .sub { 
+    font-size: 18px; 
+    color: var(--text3); 
+    margin-top: 6px; 
+    font-family: var(--mono); 
+  }
+
+  .layout { 
+    max-width: 1400px; 
+    margin: 0 auto; 
+    padding: 1.5rem 1.2rem 6rem; 
+    display: grid; 
+    grid-template-columns: 1fr; 
+    gap: 1.8rem; 
+    align-items: start; 
+  }
+  
+  @media(min-width: 1000px){ 
+    .layout { 
+      grid-template-columns: 450px 1fr; 
+      padding: 2rem 2rem 4rem;
+    }
+    .page-header h1 { font-size: 32px; }
+    .page-header .sub { font-size: 20px; }
+  }
+
+  .panel { 
+    background: var(--surface); 
+    border: 2px solid var(--border); 
+    border-radius: 12px; 
+    overflow: hidden; 
+    margin-bottom: 1.5rem; 
+  }
+  .panel-head { 
+    background: var(--surface3); 
+    border-bottom: 2px solid var(--border); 
+    padding: 1rem 1.5rem; 
+    font-size: 20px; 
+    font-weight: 700; 
+    letter-spacing: .06em; 
+    text-transform: uppercase; 
+  }
+  .panel-head.green  { color: var(--accent); }
+  .panel-head.blue   { color: var(--accent2); }
+  .panel-head.yellow { color: var(--yellow); }
+  .panel-body { padding: 1.5rem; }
+
+  .field { margin-bottom: 1.5rem; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { 
+    display: block; 
+    font-size: 20px; 
+    font-weight: 600; 
+    color: var(--text2); 
+    margin-bottom: 8px; 
+    line-height: 1.5;
+  }
+  .field input, .field select { 
+    width: 100%; 
+    padding: 16px 18px; 
+    border: 2px solid var(--border2); 
+    border-radius: 8px; 
+    background: var(--surface3); 
+    color: var(--text); 
+    font-size: 24px; 
+    font-family: var(--mono); 
+    transition: border-color .15s; 
+  }
+  .field input:focus, .field select:focus { 
+    outline: none; 
+    border-color: var(--accent); 
+    box-shadow: 0 0 0 4px rgba(76,175,125,.25); 
+  }
+  .field .hint { 
+    font-size: 18px; 
+    color: var(--text3); 
+    margin-top: 6px; 
+    line-height: 1.6;
+  }
+  .field .hint b { color: var(--yellow); }
+  .sep { height: 2px; background: var(--border); margin: 1.5rem 0; }
+
+  .method-tabs { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .mtab { 
+    flex: 1; 
+    min-width: 140px;
+    padding: 14px 12px; 
+    border: 2px solid var(--border2); 
+    border-radius: 10px; 
+    background: var(--surface2); 
+    cursor: pointer; 
+    text-align: center; 
+    font-size: 19px; 
+    font-weight: 600; 
+    transition: all .15s; 
+    color: var(--text3); 
+  }
+  .mtab:hover { border-color: var(--accent); color: var(--text2); }
+  .mtab.active { 
+    border: 3px solid var(--accent); 
+    background: var(--accent-bg); 
+    color: var(--accent); 
+  }
+
+  .calc-btn { 
+    width: 100%; 
+    padding: 20px; 
+    background: var(--accent); 
+    color: #0a1f14; 
+    border: none; 
+    border-radius: 10px; 
+    font-size: 26px; 
+    font-weight: 700; 
+    cursor: pointer; 
+    letter-spacing: .06em; 
+    transition: background .15s, transform .1s; 
+    margin-top: .6rem; 
+  }
+  .calc-btn:hover { background: #5cc990; }
+  .calc-btn:active { transform: scale(.98); }
+
+  .formula-box { 
+    background: var(--surface3); 
+    border-left: 4px solid var(--yellow); 
+    border-radius: 0 10px 10px 0; 
+    padding: 1.2rem 1.5rem; 
+    margin-bottom: 1.2rem; 
+  }
+  .formula-box .f-title { 
+    font-size: 18px; 
+    font-weight: 700; 
+    color: var(--text3); 
+    letter-spacing: .08em; 
+    text-transform: uppercase; 
+    margin-bottom: 10px; 
+  }
+  .formula-box .f-line { 
+    font-size: 20px; 
+    font-family: var(--mono); 
+    color: var(--yellow); 
+    line-height: 2.2; 
+    word-break: break-word;
+  }
+  .formula-box .f-sub { 
+    font-size: 18px; 
+    color: var(--text3); 
+    margin-top: 4px; 
+  }
+
+  /* Results */
+  .results-area { display: flex; flex-direction: column; gap: 1.5rem; }
+  .placeholder { 
+    background: var(--surface); 
+    border: 3px dashed var(--border2); 
+    border-radius: 12px; 
+    padding: 3rem 2rem; 
+    text-align: center; 
+    color: var(--text3); 
+    font-size: 22px; 
+    line-height: 2.2; 
+  }
+  .placeholder .big { font-size: 64px; opacity: .3; margin-bottom: .8rem; }
+
+  .metric-row { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
+    gap: 12px; 
+  }
+  .metric { 
+    background: var(--surface); 
+    border: 2px solid var(--border); 
+    border-radius: 10px; 
+    padding: 1.2rem 1.5rem; 
+  }
+  .metric.highlight { border-color: var(--accent); background: var(--accent-bg); }
+  .metric.highlight2 { border-color: var(--accent2); background: var(--accent2-bg); }
+  .metric .m-label { 
+    font-size: 19px; 
+    color: var(--text3); 
+    margin-bottom: 8px; 
+    font-weight: 600; 
+  }
+  .metric .m-val   { 
+    font-size: 32px; 
+    font-weight: 700; 
+    font-family: var(--mono); 
+    color: var(--accent); 
+    word-break: break-word;
+  }
+  .metric.highlight2 .m-val { color: var(--accent2); }
+  .metric .m-unit  { font-size: 19px; color: var(--text3); }
+
+  .steps-grid { display: flex; flex-direction: column; gap: 12px; }
+  .step-card { 
+    background: var(--surface); 
+    border: 2px solid var(--border); 
+    border-radius: 10px; 
+    padding: 1.2rem 1.5rem; 
+    display: grid; 
+    grid-template-columns: 44px 1fr; 
+    align-items: start; 
+    gap: 14px; 
+  }
+  
+  @media(min-width: 600px){
+    .step-card { grid-template-columns: 44px 1fr auto; }
+  }
+  
+  .step-num { 
+    width: 44px; 
+    height: 44px; 
+    border-radius: 50%; 
+    background: var(--surface3); 
+    border: 2px solid var(--border2); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 20px; 
+    font-weight: 700; 
+    color: var(--text3); 
+    flex-shrink: 0; 
+  }
+  .step-num.done { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .step-body { min-width: 0; }
+  .step-name { 
+    font-size: 20px; 
+    font-weight: 600; 
+    color: var(--text2); 
+    margin-bottom: 6px; 
+    line-height: 1.5;
+  }
+  .step-formula { 
+    font-size: 19px; 
+    font-family: var(--mono); 
+    color: var(--text3); 
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .step-val { 
+    font-size: 28px; 
+    font-weight: 700; 
+    font-family: var(--mono); 
+    color: var(--yellow); 
+    white-space: nowrap; 
+    margin-top: 6px;
+  }
+  
+  @media(min-width: 600px){
+    .step-val { margin-top: 0; }
+  }
+  
+  .step-unit { 
+    font-size: 18px; 
+    color: var(--text3); 
+  }
+
+  .chart-wrap { 
+    background: var(--surface); 
+    border: 2px solid var(--border); 
+    border-radius: 12px; 
+    padding: 1.5rem; 
+  }
+  .chart-title { 
+    font-size: 22px; 
+    font-weight: 700; 
+    color: var(--text2); 
+    margin-bottom: 1.2rem; 
+  }
+
+  .compare-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 19px; 
+  }
+  .compare-table th { 
+    padding: 14px 12px; 
+    text-align: center; 
+    font-weight: 700; 
+    font-size: 20px; 
+    color: var(--accent); 
+    border-bottom: 3px solid var(--border2); 
+    background: var(--surface3); 
+  }
+  .compare-table td { 
+    padding: 14px 12px; 
+    text-align: center; 
+    border-bottom: 2px solid var(--border); 
+    font-family: var(--mono); 
+    color: var(--text); 
+    font-size: 20px; 
+    word-break: break-word;
+  }
+  .compare-table td:first-child { 
+    text-align: left; 
+    color: var(--text2); 
+    font-family: var(--sans); 
+    font-weight: 600; 
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:hover td { background: var(--surface3); }
+  .tag-m1 { color: var(--accent); }
+  .tag-m2 { color: var(--accent2); }
+
+  .info-box { 
+    background: var(--surface3); 
+    border-left: 4px solid var(--accent2); 
+    border-radius: 0 10px 10px 0; 
+    padding: 1rem 1.3rem; 
+    font-size: 18px; 
+    color: var(--text2); 
+    line-height: 1.8; 
+    margin-bottom: 1.2rem; 
+  }
+  .info-box b { color: var(--yellow); }
+  
+  /* 移动端优化 */
+  @media(max-width: 599px){
+    .compare-table { font-size: 17px; }
+    .compare-table th { font-size: 18px; padding: 12px 8px; }
+    .compare-table td { font-size: 18px; padding: 12px 8px; }
+    .metric-row { grid-template-columns: 1fr; }
+  }
+user-select: none
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>载货汽车后悬架钢板弹簧 主、副簧刚度设计计算</h1>
+  <div class="sub">两种计算方法 · 逐步展示计算过程 · 结果对比</div>
+</div>
+
+<div class="layout">
+
+  <!-- ===== LEFT: 输入 ===== -->
+  <div>
+    <div class="panel">
+      <div class="panel-head green">已知参数输入</div>
+      <div class="panel-body">
+
+        <div class="info-box">
+          以下为 <b>JN-150</b> 默认值，可直接修改为其他车型参数后点击计算。
+        </div>
+
+        <div class="field">
+          <label>满载时后轴荷 G<sub>w</sub> (kg)</label>
+          <input type="number" id="Gw" value="6175" min="100" step="1">
+          <span class="hint">满载工况下，整车后轴总荷重</span>
+        </div>
+        <div class="field">
+          <label>后轴非簧载质量 m₀ (kg)</label>
+          <input type="number" id="m0" value="945" min="0" step="1">
+          <span class="hint">车桥、车轮等非弹簧承载部分的质量</span>
+        </div>
+        <div class="field">
+          <label>空载整车质量 G₀ (kg)</label>
+          <input type="number" id="G0" value="4300" min="100" step="1">
+        </div>
+        <div class="field">
+          <label>空载时后轴载荷比例 r (%)</label>
+          <input type="number" id="r_rear" value="45" min="1" max="99" step="0.1">
+          <span class="hint">空载时后轴分配比例，例：后轴45%则填 <b>45</b></span>
+        </div>
+        <div class="field">
+          <label>偏频初值 n₂ (Hz)</label>
+          <input type="number" id="n2" value="2.23" min="0.1" max="10" step="0.01">
+          <span class="hint">后悬架满载固有频率（偏频），典型值 1.0~2.5 Hz</span>
+        </div>
+        <div class="field">
+          <label>重力加速度 g (m/s²)</label>
+          <input type="number" id="g" value="9.8" min="9" max="10" step="0.01">
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="field">
+          <label>计算方法</label>
+          <div class="method-tabs" style="margin-top:8px">
+            <button class="mtab active" data-m="both">两种方法对比</button>
+            <button class="mtab" data-m="1">方法一</button>
+            <button class="mtab" data-m="2">方法二</button>
+          </div>
+        </div>
+
+        <button class="calc-btn" onclick="calculate()">💡 开始计算</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head yellow">计算公式说明</div>
+      <div class="panel-body">
+        <div class="formula-box">
+          <div class="f-title">方法一：基于载荷</div>
+          <div class="f-line">F₀₂ = (G₀ × r − m₀) × g / 2</div>
+          <div class="f-line">F_w2 = (G_w − m₀) × g / 2</div>
+          <div class="f-line">F_k2 = 0.5(F₀₂ + F_w2)</div>
+          <div class="f-line">λ = F_w2 / F₀₂</div>
+          <div class="f-line">C_a2/C_m2 = (2λ − 2)/(λ + 3)</div>
+          <div class="f-line">f_c2 = (4.98 / n₂)²  [cm]</div>
+          <div class="f-sub">注：f_c2单位为cm，需转换为mm使用</div>
+        </div>
+        <div class="formula-box">
+          <div class="f-title">方法二：基于质量</div>
+          <div class="f-line">M₀₂ = (G₀ × r − m₀) / 2</div>
+          <div class="f-line">M_w2 = (G_w − m₀) / 2</div>
+          <div class="f-line">M_k2 = 0.5(M₀₂ + M_w2)</div>
+          <div class="f-line">λ = M_w2 / M₀₂</div>
+          <div class="f-line">C_a2/C_m2 = (2λ − 2)/(λ + 3)</div>
+          <div class="f-line">f_c2 = g/(2π·n₂)² × 1000  [mm]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RIGHT: 结果 ===== -->
+  <div class="results-area">
+    <div id="placeholder" class="placeholder">
+      <div class="big">📊</div>
+      <div>点击左侧「开始计算」按钮<br>查看钢板弹簧主、副簧刚度计算结果</div>
+    </div>
+
+    <div id="result-block" style="display:none; flex-direction:column; gap:1.5rem;">
+      <div class="panel">
+        <div class="panel-head green">关键结果</div>
+        <div class="panel-body">
+          <div class="metric-row" id="key-metrics"></div>
+        </div>
+      </div>
+
+      <!-- 方法一详细步骤 -->
+      <div id="m1-block" class="panel">
+        <div class="panel-head green">方法一：基于载荷的计算步骤</div>
+        <div class="panel-body">
+          <div class="steps-grid" id="steps-m1"></div>
+        </div>
+      </div>
+
+      <!-- 方法二详细步骤 -->
+      <div id="m2-block" class="panel">
+        <div class="panel-head blue">方法二：基于质量的计算步骤</div>
+        <div class="panel-body">
+          <div class="steps-grid" id="steps-m2"></div>
+        </div>
+      </div>
+
+      <!-- 对比表 -->
+      <div id="compare-block" class="panel">
+        <div class="panel-head yellow">两种方法结果对比</div>
+        <div class="panel-body">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>参数</th>
+                <th class="tag-m1">方法一</th>
+                <th class="tag-m2">方法二</th>
+              </tr>
+            </thead>
+            <tbody id="compare-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 刚度对比图 -->
+      <div id="chart-block" class="chart-wrap">
+        <div class="chart-title">刚度对比图</div>
+        <div style="height:320px; position:relative;">
+          <canvas id="stiff-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let curMethod = 'both';
+let stiffChart = null;
+
+document.querySelectorAll('.mtab').forEach(btn => {
+  btn.addEventListener('click', e => {
+    document.querySelectorAll('.mtab').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    curMethod = e.target.dataset.m;
+  });
+});
+
+function v(id){ return parseFloat(document.getElementById(id).value); }
+function fmt(num, d){
+  if(isNaN(num) || !isFinite(num)) return '0.00';
+  return num.toFixed(d);
+}
+
+function calcMethod1(Gw, m0, G0, r, n2, g){
+  const F02 = (G0 * r - m0) * g / 2;
+  const Fw2 = (Gw - m0) * g / 2;
+  // 修正：副簧起作用载荷改为几何平均
+  const Fk2 = Math.sqrt(F02 * Fw2);
+  const lam = Fw2 / F02;
+  // 修正：刚度比公式改为 √λ - 1
+  const ratio = Math.sqrt(lam) - 1;
+  // 修正：fc2 单位为cm，公式结果也是cm
+  const fc2_cm = Math.pow(4.98 / n2, 2);
+  const fc2 = fc2_cm * 10; // 转换为mm
+  const C2  = Fw2 / fc2;
+  const Cm2 = C2 / (1 + ratio);
+  const Ca2 = C2 - Cm2;
+  return { F02, Fw2, Fk2, lam, ratio, fc2, fc2_cm, C2, Cm2, Ca2 };
+}
+
+function calcMethod2(Gw, m0, G0, r, n2, g){
+  const M02 = (G0 * r - m0) / 2;
+  const Mw2 = (Gw - m0) / 2;
+  // 修正：副簧起作用质量改为算术平均
+  const Mk2 = 0.5 * (M02 + Mw2);
+  const lam = Mw2 / M02;
+  // 修正：刚度比公式改为 (2λ - 2)/(λ + 3)
+  const ratio = (2 * lam - 2) / (lam + 3);
+  const fc2 = g / Math.pow(2 * Math.PI * n2, 2) * 1000;
+  const C2  = Mw2 * g / fc2;
+  const Cm2 = C2 / (1 + ratio);
+  const Ca2 = C2 - Cm2;
+  return { M02, Mw2, Mk2, lam, ratio, fc2, C2, Cm2, Ca2 };
+}
+
+function step(n, name, formula, val, unit){
+  return `
+    <div class="step-card">
+      <div class="step-num done">${n}</div>
+      <div class="step-body">
+        <div class="step-name">${name}</div>
+        <div class="step-formula">${formula}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="step-val">${val}</div>
+        <div class="step-unit">${unit}</div>
+      </div>
+    </div>`;
+}
+
+function renderSteps1(r){
+  const g_val = parseFloat(document.getElementById('g').value);
+  const n2_val = parseFloat(document.getElementById('n2').value);
+  let html = '';
+  html += step(1, '空载载荷（单侧）F₀₂',
+    `= (G₀ × r − m₀) × g / 2`,
+    fmt(r.F02,2), 'N');
+  html += step(2, '满载载荷（单侧）F_w2',
+    `= (G_w − m₀) × g / 2`,
+    fmt(r.Fw2,2), 'N');
+  html += step(3, '副簧起作用载荷 F_k2',
+    `= √(F₀₂ × F_w2) = √(${fmt(r.F02,1)} × ${fmt(r.Fw2,1)})`,
+    fmt(r.Fk2,2), 'N');
+  html += step(4, '载荷比 λ',
+    `= F_w2 / F₀₂ = ${fmt(r.Fw2,1)} / ${fmt(r.F02,1)}`,
+    fmt(r.lam,4), '');
+  html += step(5, '副/主簧刚度比 C_a2/C_m2',
+    `= √λ − 1 = √${fmt(r.lam,4)} − 1`,
+    fmt(r.ratio,4), '');
+  html += step(6, '后悬架静挠度 f_c2',
+    `= (4.98 / n₂)² = (4.98 / ${fmt(n2_val,2)})² = ${fmt(r.fc2_cm,2)} cm`,
+    fmt(r.fc2,2), 'mm');
+  html += step(7, '后悬架总刚度 C₂',
+    `= F_w2 / f_c2 = ${fmt(r.Fw2,1)} / ${fmt(r.fc2,2)}`,
+    fmt(r.C2,2), 'N/mm');
+  html += step(8, '主簧刚度 C_m2',
+    `= C₂ / (1 + C_a2/C_m2) = ${fmt(r.C2,2)} / (1 + ${fmt(r.ratio,4)})`,
+    fmt(r.Cm2,2), 'N/mm');
+  html += step(9, '副簧刚度 C_a2',
+    `= C₂ − C_m2 = ${fmt(r.C2,2)} − ${fmt(r.Cm2,2)}`,
+    fmt(r.Ca2,2), 'N/mm');
+  document.getElementById('steps-m1').innerHTML = html;
+}
+
+function renderSteps2(R, g){
+  const r = R;
+  const n2_val = parseFloat(document.getElementById('n2').value);
+  let html = '';
+  html += step(1, '空载质量（单侧）M₀₂',
+    `= (G₀ × r − m₀) / 2`,
+    fmt(r.M02,2), 'kg');
+  html += step(2, '满载质量（单侧）M_w2',
+    `= (G_w − m₀) / 2`,
+    fmt(r.Mw2,2), 'kg');
+  html += step(3, '副簧起作用质量 M_k2',
+    `= 0.5(M₀₂ + M_w2) = 0.5(${fmt(r.M02,1)} + ${fmt(r.Mw2,1)})`,
+    fmt(r.Mk2,2), 'kg');
+  html += step(4, '载荷比 λ',
+    `= M_w2 / M₀₂ = ${fmt(r.Mw2,1)} / ${fmt(r.M02,1)}`,
+    fmt(r.lam,4), '');
+  html += step(5, '副/主簧刚度比 C_a2/C_m2',
+    `= (2λ − 2)/(λ + 3) = (2×${fmt(r.lam,4)} − 2)/(${fmt(r.lam,4)} + 3)`,
+    fmt(r.ratio,4), '');
+  html += step(6, '后悬架静挠度 f_c2',
+    `= g / (2π·n₂)² × 1000 = ${g}/(2π×${n2_val})²×1000`,
+    fmt(r.fc2,2), 'mm');
+  html += step(7, '后悬架总刚度 C₂',
+    `= M_w2 × g / f_c2 = ${fmt(r.Mw2,2)} × ${g} / ${fmt(r.fc2,2)}`,
+    fmt(r.C2,2), 'N/mm');
+  html += step(8, '主簧刚度 C_m2',
+    `= C₂ / (1 + C_a2/C_m2) = ${fmt(r.C2,2)} / (1 + ${fmt(r.ratio,4)})`,
+    fmt(r.Cm2,2), 'N/mm');
+  html += step(9, '副簧刚度 C_a2',
+    `= C₂ − C_m2 = ${fmt(r.C2,2)} − ${fmt(r.Cm2,2)}`,
+    fmt(r.Ca2,2), 'N/mm');
+  document.getElementById('steps-m2').innerHTML = html;
+}
+
+function renderCompare(r1, r2){
+  const g_val = parseFloat(document.getElementById('g').value);
+  const rows = [
+    ['空载载荷（单侧）', fmt(r1.F02,2)+' N', fmt(r2.M02*g_val,2)+' N'],
+    ['满载载荷（单侧）', fmt(r1.Fw2,2)+' N', fmt(r2.Mw2*g_val,2)+' N'],
+    ['副簧起作用载荷',   fmt(r1.Fk2,2)+' N', fmt(r2.Mk2*g_val,2)+' N'],
+    ['载荷比 λ',         fmt(r1.lam,4), fmt(r2.lam,4)],
+    ['副/主刚度比',       fmt(r1.ratio,4), fmt(r2.ratio,4)],
+    ['后悬架静挠度 f_c2', fmt(r1.fc2,2)+' mm', fmt(r2.fc2,2)+' mm'],
+    ['后悬架总刚度 C₂',  fmt(r1.C2,2)+' N/mm', fmt(r2.C2,2)+' N/mm'],
+    ['主簧刚度 C_m2',    fmt(r1.Cm2,2)+' N/mm', fmt(r2.Cm2,2)+' N/mm'],
+    ['副簧刚度 C_a2',    fmt(r1.Ca2,2)+' N/mm', fmt(r2.Ca2,2)+' N/mm'],
+  ];
+  document.getElementById('compare-body').innerHTML = rows.map(row =>
+    `<tr><td>${row[0]}</td><td class="tag-m1">${row[1]}</td><td class="tag-m2">${row[2]}</td></tr>`
+  ).join('');
+}
+
+function renderChart(r1, r2){
+  if(stiffChart){ stiffChart.destroy(); stiffChart = null; }
+  const labels = ['主簧刚度 C_m2', '副簧刚度 C_a2', '总刚度 C₂'];
+  stiffChart = new Chart(document.getElementById('stiff-chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: '方法一', data: [r1.Cm2, r1.Ca2, r1.C2].map(v=>+v.toFixed(2)),
+          backgroundColor: '#4caf7d', borderRadius: 6, borderSkipped: false },
+        { label: '方法二', data: [r2.Cm2, r2.Ca2, r2.C2].map(v=>+v.toFixed(2)),
+          backgroundColor: '#5b9bd5', borderRadius: 6, borderSkipped: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { color: '#d0d0d0', font: { size: 18 } } },
+        tooltip: { 
+          bodyFont: { size: 16 },
+          callbacks: { label: c => `${c.dataset.label}: ${c.raw.toFixed(2)} N/mm` } 
+        }
+      },
+      scales: {
+        x: { 
+          ticks: { font: { size: 18 }, color: '#c0c0c0' }, 
+          grid: { display: false } 
+        },
+        y: { 
+          ticks: { 
+            font: { size: 17, family: 'Courier New' }, 
+            color: '#c0c0c0',
+            callback: v => v + ' N/mm' 
+          },
+          grid: { color: 'rgba(255,255,255,.1)' } 
+        }
+      }
+    }
+  });
+}
+
+function renderKeyMetrics(r1, r2, showM1, showM2){
+  // Use method1 as primary if showing; else method2
+  const r = showM1 ? r1 : r2;
+  let html = `
+    <div class="metric highlight">
+      <div class="m-label">主簧刚度 C_m2</div>
+      <div class="m-val">${fmt(r.Cm2,2)}<span class="m-unit"> N/mm</span></div>
+    </div>
+    <div class="metric highlight2">
+      <div class="m-label">副簧刚度 C_a2</div>
+      <div class="m-val">${fmt(r.Ca2,2)}<span class="m-unit"> N/mm</span></div>
+    </div>
+    <div class="metric">
+      <div class="m-label">后悬架总刚度 C₂</div>
+      <div class="m-val">${fmt(r.C2,2)}<span class="m-unit"> N/mm</span></div>
+    </div>
+    <div class="metric">
+      <div class="m-label">副/主刚度比</div>
+      <div class="m-val">${fmt(r.ratio,3)}</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">静挠度 f_c2</div>
+      <div class="m-val">${fmt(r.fc2,2)}<span class="m-unit"> mm</span></div>
+    </div>
+    <div class="metric">
+      <div class="m-label">载荷比 λ</div>
+      <div class="m-val">${fmt(r.lam,3)}</div>
+    </div>`;
+  document.getElementById('key-metrics').innerHTML = html;
+}
+
+function calculate(){
+  const Gw = v('Gw'), m0 = v('m0'), G0 = v('G0');
+  const r   = v('r_rear') / 100;
+  const n2  = v('n2'), g = v('g');
+
+  const r1 = calcMethod1(Gw, m0, G0, r, n2, g);
+  const r2 = calcMethod2(Gw, m0, G0, r, n2, g);
+
+  const showM1 = curMethod === '1' || curMethod === 'both';
+  const showM2 = curMethod === '2' || curMethod === 'both';
+  const showComp = curMethod === 'both';
+
+  document.getElementById('m1-block').style.display = showM1 ? 'block' : 'none';
+  document.getElementById('m2-block').style.display = showM2 ? 'block' : 'none';
+  document.getElementById('compare-block').style.display = showComp ? 'block' : 'none';
+  document.getElementById('chart-block').style.display = showComp ? 'block' : 'none';
+
+  renderKeyMetrics(r1, r2, showM1, showM2);
+  if(showM1) renderSteps1(r1);
+  if(showM2) renderSteps2(r2, g);
+  if(showComp){ renderCompare(r1, r2); renderChart(r1, r2); }
+
+  document.getElementById('placeholder').style.display = 'none';
+  const rb = document.getElementById('result-block');
+  rb.style.display = 'flex';
+}
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+if (e.key === 'F12' || 
+(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+(e.ctrlKey && e.key === 'U') ||
+(e.ctrlKey && e.key === 'S')) {
+e.preventDefault();
+return false;
+}
+});
+
+</script>
+<script>
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
+        (e.ctrlKey && e.key === 'S')) {
+      e.preventDefault();
+      return false;
+    }
+  });
+</script>
+
+</body>
+</html>
